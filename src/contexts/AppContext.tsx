@@ -74,7 +74,23 @@ const defaultProducts: Product[] = [
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppContextType['user']>(() => {
     const saved = localStorage.getItem('user');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const userData = JSON.parse(saved);
+        // If user data has userFname/userLname, use that format
+        if (userData.userFname) {
+          return {
+            name: `${userData.userFname} ${userData.userLname}`,
+            role: userData.role || 'customer',
+            avatar: userData.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${userData.userFname}${userData.userLname}`
+          };
+        }
+        return userData;
+      } catch {
+        return null;
+      }
+    }
+    return null;
   });
   const [products, setProducts] = useState<Product[]>(defaultProducts);
   const [categories, setCategories] = useState<Category[]>(defaultCategories);
