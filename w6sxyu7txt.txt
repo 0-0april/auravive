@@ -1,0 +1,11 @@
+you are a backend developer and you boss tells you to display the values in the database to the pages.
+
+In the ownerdahsboard, ownerproducts, and ownerorders page:
+1. scan the database (you find it in the server/auravivedb.sql) query so you could have a guide. note that you can make predefined functions and procedures if you have to to make it easier. and you can also add attributes/table to table when u realize there is not column for that part in the page.
+2.display the owner's name and add (owner) in the navbar instead of the word shop owner
+3. make sure the search icon shows when the web adjust to mobile view
+4. display the products that is in the database and other necessary details about the product without ruining the ui. you can use the image from the path column of the db
+5. display the product details as well in the orders. the order should be displayed as group by users.
+6. change the ui for the image url when the owner adds the product. it should be input as file instead of text.
+6. allow the shop owner to add product with details right to the database and add image of the product.
+
