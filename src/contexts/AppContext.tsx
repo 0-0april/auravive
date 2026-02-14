@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
+const API_BASE = 'http://localhost:5000/api';
+
 export interface Category {
   id: string;
   name: string;
@@ -17,24 +19,45 @@ export interface Product {
 }
 
 export interface CartItem {
+  cartID: number;
   product: Product;
   quantity: number;
 }
 
 export interface Order {
   id: string;
-  items: CartItem[];
+  orderId: number;
+  productName: string;
+  productPrice: number;
+  productImg: string;
+  productCateg: string;
+  orderCount: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
+  status: string;
   customerName: string;
   date: string;
+  items: { product: Product; quantity: number }[];
+}
+
+export interface UserData {
+  userID: number;
+  name: string;
+  role: 'owner' | 'customer';
+  avatar: string;
+  userFname: string;
+  userLname: string;
+  userEmail?: string;
+  userPhone?: string;
+  userUserN?: string;
 }
 
 interface AppContextType {
-  user: { name: string; role: 'owner' | 'customer'; avatar: string } | null;
+  user: UserData | null;
+  loginWithData: (userData: UserData) => void;
   login: (role: 'owner' | 'customer') => void;
   logout: () => void;
   products: Product[];
+  fetchProducts: () => Promise<void>;
   addProduct: (p: Omit<Product, 'id'>) => void;
   updateProduct: (id: string, p: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
@@ -47,42 +70,46 @@ interface AppContextType {
   updateCartQty: (productId: string, qty: number) => void;
   clearCart: () => void;
   orders: Order[];
-  placeOrder: (customerName: string) => void;
-  updateOrderStatus: (id: string, status: Order['status']) => void;
+  fetchOrders: () => Promise<void>;
+  placeOrder: (customerName: string) => Promise<void>;
+  updateOrderStatus: (id: string, status: string) => void;
   search: string;
   setSearch: (value: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
 
-const defaultCategories: Category[] = [
-  { id: '1', name: 'Electronics' },
-  { id: '2', name: 'Clothing' },
-  { id: '3', name: 'Food & Drinks' },
-  { id: '4', name: 'Home & Garden' },
-];
-
-const defaultProducts: Product[] = [
-  { id: '1', name: 'Wireless Headphones', description: 'Premium noise-cancelling wireless headphones with 30hr battery life.', price: 89.99, category: 'Electronics', image: '', stock: 25, active: true },
-  { id: '2', name: 'Organic Cotton T-Shirt', description: 'Soft, sustainable cotton tee in classic fit.', price: 29.99, category: 'Clothing', image: '', stock: 50, active: true },
-  { id: '3', name: 'Artisan Coffee Beans', description: 'Single-origin medium roast, 500g bag.', price: 18.50, category: 'Food & Drinks', image: '', stock: 100, active: true },
-  { id: '4', name: 'Ceramic Plant Pot', description: 'Handcrafted minimalist pot for indoor plants.', price: 24.00, category: 'Home & Garden', image: '', stock: 15, active: true },
-  { id: '5', name: 'Smart Watch', description: 'Fitness tracker with heart rate and GPS.', price: 149.99, category: 'Electronics', image: '', stock: 0, active: false },
-  { id: '6', name: 'Linen Throw Blanket', description: 'Lightweight, breathable linen blanket.', price: 55.00, category: 'Home & Garden', image: '', stock: 30, active: true },
-];
+// Map DB product row to frontend Product interface
+function mapDbProduct(p: any): Product {
+  return {
+    id: String(p.productID),
+    name: p.productName || '',
+    description: p.productDescrip || '',
+    price: parseFloat(p.productPrice) || 0,
+    category: p.productCateg || '',
+    image: p.productImg || '',
+    stock: p.productStock ?? 0,
+    active: (p.productStock ?? 0) > 0,
+  };
+}
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<AppContextType['user']>(() => {
+  const [user, setUser] = useState<UserData | null>(() => {
     const saved = localStorage.getItem('user');
     if (saved) {
       try {
         const userData = JSON.parse(saved);
-        // If user data has userFname/userLname, use that format
         if (userData.userFname) {
           return {
+            userID: userData.userID,
             name: `${userData.userFname} ${userData.userLname}`,
             role: userData.role || 'customer',
-            avatar: userData.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${userData.userFname}${userData.userLname}`
+            avatar: userData.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${userData.userFname}${userData.userLname}`,
+            userFname: userData.userFname,
+            userLname: userData.userLname,
+            userEmail: userData.userEmail,
+            userPhone: userData.userPhone,
+            userUserN: userData.userUserN,
           };
         }
         return userData;
@@ -92,47 +119,198 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     return null;
   });
-  const [products, setProducts] = useState<Product[]>(defaultProducts);
-  const [categories, setCategories] = useState<Category[]>(defaultCategories);
-  const [cart, setCart] = useState<CartItem[]>(() => {
-    const saved = localStorage.getItem('cart');
-    return saved ? JSON.parse(saved) : [];
-  });
-  const [orders, setOrders] = useState<Order[]>([
-    { id: 'ORD-001', items: [{ product: defaultProducts[0], quantity: 1 }], total: 89.99, status: 'confirmed', customerName: 'Jane Doe', date: '2026-02-09' },
-    { id: 'ORD-002', items: [{ product: defaultProducts[2], quantity: 3 }], total: 55.50, status: 'pending', customerName: 'John Smith', date: '2026-02-10' },
-  ]);
+
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState('');
 
+  // --- Fetch products from DB ---
+  const fetchProducts = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_BASE}/products`);
+      const data = await res.json();
+      const mapped = data.map(mapDbProduct);
+      setProducts(mapped);
+
+      // Also fetch categories
+      const catRes = await fetch(`${API_BASE}/products/categories`);
+      const catData = await catRes.json();
+      setCategories(catData.map((name: string, idx: number) => ({ id: String(idx + 1), name })));
+    } catch (err) {
+      console.error('Failed to fetch products:', err);
+    }
+  }, []);
+
+  // --- Fetch cart from DB ---
+  const fetchCart = useCallback(async () => {
+    if (!user?.userID) return;
+    try {
+      const res = await fetch(`${API_BASE}/carts/${user.userID}`);
+      const data = await res.json();
+      const mapped: CartItem[] = data.map((item: any) => ({
+        cartID: item.cartID,
+        product: mapDbProduct(item),
+        quantity: item.quantity || 1,
+      }));
+      setCart(mapped);
+    } catch (err) {
+      console.error('Failed to fetch cart:', err);
+    }
+  }, [user?.userID]);
+
+  // --- Fetch orders from DB ---
+  const fetchOrders = useCallback(async () => {
+    if (!user?.userID) return;
+    try {
+      const url = user.role === 'owner'
+        ? `${API_BASE}/orders`
+        : `${API_BASE}/orders/user/${user.userID}`;
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // Group orders or map individually
+      const mapped: Order[] = data.map((o: any) => ({
+        id: `ORD-${String(o.orderId).padStart(3, '0')}`,
+        orderId: o.orderId,
+        productName: o.productName,
+        productPrice: parseFloat(o.productPrice) || 0,
+        productImg: o.productImg || '',
+        productCateg: o.productCateg || '',
+        orderCount: o.orderCount || 1,
+        total: parseFloat(o.orderTotalAmount) || 0,
+        status: (o.orderStatus || 'pending').toLowerCase(),
+        customerName: o.userFname ? `${o.userFname} ${o.userLname}` : user.name,
+        date: o.orderDate ? new Date(o.orderDate).toISOString().split('T')[0] : '',
+        items: [{
+          product: {
+            id: String(o.productID),
+            name: o.productName || '',
+            description: '',
+            price: parseFloat(o.productPrice) || 0,
+            category: o.productCateg || '',
+            image: o.productImg || '',
+            stock: 0,
+            active: true,
+          },
+          quantity: o.orderCount || 1,
+        }],
+      }));
+
+      setOrders(mapped);
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    }
+  }, [user?.userID, user?.role, user?.name]);
+
+  // Load data when user logs in
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    if (user?.userID) {
+      fetchCart();
+      fetchOrders();
+    }
+  }, [user?.userID, fetchCart, fetchOrders]);
+
+  // --- Login ---
+  const loginWithData = useCallback((userData: UserData) => {
+    setUser(userData);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('isLoggedIn', 'true');
+  }, []);
+
   const login = useCallback((role: 'owner' | 'customer') => {
-    const userData = {
+    // Legacy: used by facebook button — just set role
+    const saved = localStorage.getItem('user');
+    if (saved) {
+      try {
+        const existing = JSON.parse(saved);
+        const updated = { ...existing, role };
+        setUser(updated);
+        localStorage.setItem('user', JSON.stringify(updated));
+        return;
+      } catch { /* fall through */ }
+    }
+    const userData: UserData = {
+      userID: 0,
       name: role === 'owner' ? 'Shop Owner' : 'Customer',
       role,
       avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${role === 'owner' ? 'SO' : 'CU'}`,
+      userFname: role === 'owner' ? 'Shop' : 'Customer',
+      userLname: role === 'owner' ? 'Owner' : '',
     };
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
   }, []);
 
-  const logout = useCallback(() => { 
-    setUser(null); 
+  const logout = useCallback(() => {
+    setUser(null);
     setCart([]);
+    setOrders([]);
     localStorage.removeItem('user');
     localStorage.removeItem('cart');
+    localStorage.removeItem('isLoggedIn');
   }, []);
 
-  const addProduct = useCallback((p: Omit<Product, 'id'>) => {
-    setProducts(prev => [...prev, { ...p, id: Date.now().toString() }]);
-  }, []);
+  // --- Products (backend-connected) ---
+  const addProduct = useCallback(async (p: Omit<Product, 'id'>) => {
+    try {
+      await fetch(`${API_BASE}/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: p.name,
+          productDescrip: p.description,
+          productCateg: p.category,
+          productPrice: p.price,
+          productStock: p.stock,
+          productImg: p.image,
+        }),
+      });
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to add product:', err);
+    }
+  }, [fetchProducts]);
 
-  const updateProduct = useCallback((id: string, p: Partial<Product>) => {
-    setProducts(prev => prev.map(prod => prod.id === id ? { ...prod, ...p } : prod));
-  }, []);
+  const updateProduct = useCallback(async (id: string, p: Partial<Product>) => {
+    try {
+      // Get current product data
+      const current = products.find(prod => prod.id === id);
+      if (!current) return;
+      const merged = { ...current, ...p };
+      await fetch(`${API_BASE}/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: merged.name,
+          productDescrip: merged.description,
+          productCateg: merged.category,
+          productPrice: merged.price,
+          productStock: merged.stock,
+          productImg: merged.image,
+        }),
+      });
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to update product:', err);
+    }
+  }, [products, fetchProducts]);
 
-  const deleteProduct = useCallback((id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
-  }, []);
+  const deleteProduct = useCallback(async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/products/${id}`, { method: 'DELETE' });
+      await fetchProducts();
+    } catch (err) {
+      console.error('Failed to delete product:', err);
+    }
+  }, [fetchProducts]);
 
+  // --- Categories ---
   const addCategory = useCallback((name: string) => {
     setCategories(prev => [...prev, { id: Date.now().toString(), name }]);
   }, []);
@@ -141,54 +319,113 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCategories(prev => prev.filter(c => c.id !== id));
   }, []);
 
-  const addToCart = useCallback((product: Product) => {
-    setCart(prev => {
-      const exists = prev.find(i => i.product.id === product.id);
-      if (exists) return prev.map(i => i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { product, quantity: 1 }];
-    });
-  }, []);
+  // --- Cart (backend-connected) ---
+  const addToCart = useCallback(async (product: Product) => {
+    if (!user?.userID) return;
+    try {
+      await fetch(`${API_BASE}/carts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, productID: parseInt(product.id) }),
+      });
+      await fetchCart();
+    } catch (err) {
+      console.error('Failed to add to cart:', err);
+    }
+  }, [user?.userID, fetchCart]);
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCart(prev => prev.filter(i => i.product.id !== productId));
-  }, []);
+  const removeFromCart = useCallback(async (productId: string) => {
+    const item = cart.find(i => i.product.id === productId);
+    if (!item) return;
+    try {
+      await fetch(`${API_BASE}/carts/item/${item.cartID}`, { method: 'DELETE' });
+      await fetchCart();
+    } catch (err) {
+      console.error('Failed to remove from cart:', err);
+    }
+  }, [cart, fetchCart]);
 
-  const updateCartQty = useCallback((productId: string, qty: number) => {
-    if (qty <= 0) { setCart(prev => prev.filter(i => i.product.id !== productId)); return; }
-    setCart(prev => prev.map(i => i.product.id === productId ? { ...i, quantity: qty } : i));
-  }, []);
+  const updateCartQty = useCallback(async (productId: string, qty: number) => {
+    const item = cart.find(i => i.product.id === productId);
+    if (!item) return;
+    try {
+      if (qty <= 0) {
+        await fetch(`${API_BASE}/carts/item/${item.cartID}`, { method: 'DELETE' });
+      } else {
+        await fetch(`${API_BASE}/carts/${item.cartID}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity: qty }),
+        });
+      }
+      await fetchCart();
+    } catch (err) {
+      console.error('Failed to update cart qty:', err);
+    }
+  }, [cart, fetchCart]);
 
-  const clearCart = useCallback(() => setCart([]), []);
+  const clearCart = useCallback(async () => {
+    if (!user?.userID) return;
+    try {
+      await fetch(`${API_BASE}/carts/user/${user.userID}`, { method: 'DELETE' });
+      setCart([]);
+    } catch (err) {
+      console.error('Failed to clear cart:', err);
+    }
+  }, [user?.userID]);
 
-  const placeOrder = useCallback((customerName: string) => {
-    const total = cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
-    const order: Order = {
-      id: `ORD-${String(orders.length + 1).padStart(3, '0')}`,
-      items: [...cart],
-      total,
-      status: 'pending',
-      customerName,
-      date: new Date().toISOString().split('T')[0],
-    };
-    setOrders(prev => [order, ...prev]);
-    setCart([]);
-  }, [cart, orders.length]);
+  // --- Place Order (backend-connected) ---
+  const placeOrder = useCallback(async (customerName: string) => {
+    if (!user?.userID || cart.length === 0) return;
+    try {
+      const items = cart.map(i => ({
+        productID: parseInt(i.product.id),
+        quantity: i.quantity,
+        totalAmount: i.product.price * i.quantity,
+      }));
 
-  const updateOrderStatus = useCallback((id: string, status: Order['status']) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status } : o));
-  }, []);
+      const res = await fetch(`${API_BASE}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, items }),
+      });
 
-  useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cart));
-  }, [cart]);
+      if (res.ok) {
+        // Clear the cart after placing order
+        await fetch(`${API_BASE}/carts/user/${user.userID}`, { method: 'DELETE' });
+        setCart([]);
+        await fetchOrders();
+        await fetchProducts(); // refresh stock
+      }
+    } catch (err) {
+      console.error('Failed to place order:', err);
+    }
+  }, [user?.userID, cart, fetchOrders, fetchProducts]);
+
+  // --- Update Order Status ---
+  const updateOrderStatus = useCallback(async (id: string, status: string) => {
+    // Extract numeric orderId from "ORD-001" format
+    const numericId = id.replace('ORD-', '');
+    const orderId = parseInt(numericId);
+    try {
+      await fetch(`${API_BASE}/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderStatus: status }),
+      });
+      await fetchOrders();
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+    }
+  }, [fetchOrders]);
 
   return (
     <AppContext.Provider value={{
-      user, login, logout,
-      products, addProduct, updateProduct, deleteProduct,
+      user, login, loginWithData, logout,
+      products, fetchProducts, addProduct, updateProduct, deleteProduct,
       categories, addCategory, deleteCategory,
       cart, addToCart, removeFromCart, updateCartQty, clearCart,
-      orders, placeOrder, updateOrderStatus,
+      orders, fetchOrders, placeOrder, updateOrderStatus,
       search, setSearch,
     }}>
       {children}

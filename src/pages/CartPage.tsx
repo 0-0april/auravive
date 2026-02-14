@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, Package } from 'lucide-react';
 
 const CartPage = () => {
   const { cart, updateCartQty, removeFromCart, placeOrder, user } = useApp();
@@ -10,14 +10,17 @@ const CartPage = () => {
 
   const subtotal = cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
 
-  const handleOrder = () => {
+  const handleOrder = async () => {
     if (cart.length === 0) return;
     setPlacing(true);
-    setTimeout(() => {
-      placeOrder(user?.name || 'Customer');
-      setPlacing(false);
+    try {
+      await placeOrder(user?.name || 'Customer');
       navigate('/shop/orders');
-    }, 800);
+    } catch (err) {
+      console.error('Failed to place order:', err);
+    } finally {
+      setPlacing(false);
+    }
   };
 
   if (cart.length === 0) {
@@ -45,14 +48,19 @@ const CartPage = () => {
           <div key={item.product.id} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
             <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
               {item.product.image ? (
-                <img src={item.product.image} alt="" className="w-full h-full object-cover" />
+                <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
               ) : (
-                <ShoppingBag className="w-6 h-6 text-muted-foreground/40" />
+                <Package className="w-6 h-6 text-muted-foreground/40" />
               )}
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-foreground truncate">{item.product.name}</h3>
               <p className="text-sm text-muted-foreground">${item.product.price.toFixed(2)} each</p>
+              {item.product.category && (
+                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md mt-1 inline-block">
+                  {item.product.category}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -69,7 +77,7 @@ const CartPage = () => {
                 <Plus className="w-3 h-3" />
               </button>
             </div>
-            <span className="font-bold text-foreground w-20 text-right">${(item.product.price * item.quantity).toFixed(2)}</span>
+            <span className="font-bold text-foreground w-24 text-right">${(item.product.price * item.quantity).toFixed(2)}</span>
             <button
               onClick={() => removeFromCart(item.product.id)}
               className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive cursor-pointer text-muted-foreground"
@@ -81,9 +89,15 @@ const CartPage = () => {
       </div>
 
       <div className="bg-card rounded-xl border border-border p-6">
-        <div className="flex justify-between items-center mb-4">
-          <span className="text-muted-foreground">Subtotal</span>
-          <span className="text-2xl font-bold text-foreground">${subtotal.toFixed(2)}</span>
+        <div className="space-y-2 mb-4">
+          <div className="flex justify-between items-center text-sm text-muted-foreground">
+            <span>Items ({cart.reduce((sum, i) => sum + i.quantity, 0)})</span>
+            <span>${subtotal.toFixed(2)}</span>
+          </div>
+          <div className="border-t border-border pt-3 flex justify-between items-center">
+            <span className="text-foreground font-medium">Total</span>
+            <span className="text-2xl font-bold text-foreground">${subtotal.toFixed(2)}</span>
+          </div>
         </div>
         <button
           onClick={handleOrder}

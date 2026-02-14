@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import ProductCard from '@/components/ProductCard';
+import { Package } from 'lucide-react';
 
 const CustomerShop = () => {
-  const { products, categories, addToCart, search } = useApp();
+  const { products, categories, addToCart, search, fetchProducts } = useApp();
   const [filterCat, setFilterCat] = useState('All');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchProducts();
+      setLoading(false);
+    };
+    load();
+  }, [fetchProducts]);
 
   const activeProducts = products.filter(p => p.active);
   const filtered = activeProducts.filter(p => {
@@ -31,17 +42,43 @@ const CustomerShop = () => {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filtered.map(p => (
-          <ProductCard key={p.id} product={p} onAddToCart={addToCart} />
-        ))}
-      </div>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="bg-card rounded-xl border border-border overflow-hidden animate-pulse">
+              <div className="aspect-square bg-muted" />
+              <div className="p-4 space-y-3">
+                <div className="h-4 bg-muted rounded w-3/4" />
+                <div className="h-3 bg-muted rounded w-full" />
+                <div className="h-3 bg-muted rounded w-1/2" />
+                <div className="flex justify-between items-center mt-4">
+                  <div className="h-6 bg-muted rounded w-16" />
+                  <div className="h-8 bg-muted rounded w-16" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map(p => (
+              <ProductCard key={p.id} product={p} onAddToCart={addToCart} />
+            ))}
+          </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-16 text-muted-foreground">No products found</div>
+          {filtered.length === 0 && (
+            <div className="text-center py-16 animate-fade-in">
+              <Package className="w-16 h-16 mx-auto text-muted-foreground/40 mb-4" />
+              <h2 className="text-xl font-display font-bold text-foreground mb-2">No products found</h2>
+              <p className="text-muted-foreground">Try adjusting your search or filter</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
 };
 
 export default CustomerShop;
+

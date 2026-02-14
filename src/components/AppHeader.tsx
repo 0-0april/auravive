@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { ShoppingBag, LogOut, ShoppingCart, LayoutDashboard, Package, ClipboardList, Search } from 'lucide-react';
+import { ShoppingBag, LogOut, ShoppingCart, LayoutDashboard, Package, ClipboardList, Search, X } from 'lucide-react';
 
 const AppHeader = () => {
   const { user, logout, cart, search, setSearch } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   if (!user) return null;
 
@@ -41,12 +43,10 @@ const AppHeader = () => {
               const active = location.pathname === l.path;
               return (
                 <button
-                
                   key={l.path}
                   onClick={() => navigate(l.path)}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
-                    active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
                 >
                   <Icon className="w-4 h-4" />
                   <span className="hidden sm:inline">{l.label}</span>
@@ -59,6 +59,7 @@ const AppHeader = () => {
         <div className="flex items-center gap-3">
           {!isOwner && (
             <>
+              {/* Desktop search bar */}
               <div className="relative hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -68,6 +69,15 @@ const AppHeader = () => {
                   className="w-64 pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
+
+              {/* Mobile search toggle button */}
+              <button
+                onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+              >
+                {mobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+              </button>
+
               <button
                 onClick={() => navigate('/shop/cart')}
                 className="relative p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer"
@@ -93,6 +103,22 @@ const AppHeader = () => {
           </button>
         </div>
       </div>
+
+      {/* Mobile search bar (expandable) */}
+      {!isOwner && mobileSearchOpen && (
+        <div className="md:hidden px-4 pb-3 animate-fade-in">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search products..."
+              autoFocus
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+        </div>
+      )}
     </header>
   );
 };

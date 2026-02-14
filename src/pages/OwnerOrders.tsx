@@ -1,10 +1,15 @@
-import { useApp, Order } from '@/contexts/AppContext';
+import { useEffect } from 'react';
+import { useApp } from '@/contexts/AppContext';
 import { StatusBadge } from './OwnerDashboard';
 
-const statusOptions: Order['status'][] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+const statusOptions = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
 
 const OwnerOrders = () => {
-  const { orders, updateOrderStatus } = useApp();
+  const { orders, updateOrderStatus, fetchOrders } = useApp();
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
@@ -28,7 +33,7 @@ const OwnerOrders = () => {
             </thead>
             <tbody className="divide-y divide-border">
               {orders.map(o => (
-                <tr key={o.id} className="hover:bg-muted/30 transition-colors">
+                <tr key={o.id + '-' + o.orderId} className="hover:bg-muted/30 transition-colors">
                   <td className="px-5 py-4 text-sm font-medium text-foreground">{o.id}</td>
                   <td className="px-5 py-4 text-sm text-foreground">{o.customerName}</td>
                   <td className="px-5 py-4 text-sm text-muted-foreground">{o.items.map(i => `${i.product.name} ×${i.quantity}`).join(', ')}</td>
@@ -37,7 +42,7 @@ const OwnerOrders = () => {
                   <td className="px-5 py-4">
                     <select
                       value={o.status}
-                      onChange={e => updateOrderStatus(o.id, e.target.value as Order['status'])}
+                      onChange={e => updateOrderStatus(o.id, e.target.value)}
                       className="px-2 py-1 rounded-md border border-input bg-background text-foreground text-xs focus:outline-none focus:ring-2 focus:ring-ring cursor-pointer"
                     >
                       {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}

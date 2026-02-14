@@ -1,8 +1,14 @@
+import { useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { Package, DollarSign, ShoppingCart, TrendingUp, AlertTriangle } from 'lucide-react';
 
 const OwnerDashboard = () => {
-  const { products, orders } = useApp();
+  const { products, orders, fetchProducts, fetchOrders } = useApp();
+
+  useEffect(() => {
+    fetchProducts();
+    fetchOrders();
+  }, [fetchProducts, fetchOrders]);
 
   const totalProducts = products.length;
   const activeProducts = products.filter(p => p.active).length;
@@ -68,7 +74,7 @@ const OwnerDashboard = () => {
         </div>
         <div className="divide-y divide-border">
           {orders.slice(0, 5).map(o => (
-            <div key={o.id} className="p-4 flex items-center justify-between">
+            <div key={o.id + '-' + o.orderId} className="p-4 flex items-center justify-between">
               <div>
                 <span className="font-medium text-foreground">{o.id}</span>
                 <span className="text-muted-foreground text-sm ml-3">{o.customerName}</span>
@@ -80,6 +86,9 @@ const OwnerDashboard = () => {
             </div>
           ))}
         </div>
+        {orders.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">No orders yet</div>
+        )}
       </div>
     </div>
   );

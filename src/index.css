@@ -89,7 +89,9 @@
     font-family: var(--font-body);
   }
 
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     font-family: var(--font-display);
   }
 }
@@ -98,7 +100,7 @@
   .glass-card {
     @apply bg-card/80 backdrop-blur-md border border-border/50 shadow-lg;
   }
-  
+
   .gradient-primary {
     background: linear-gradient(135deg, hsl(271 73% 20%), hsl(271 73% 35%));
   }
@@ -117,11 +119,23 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

@@ -1,9 +1,43 @@
+import { useEffect, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { StatusBadge } from './OwnerDashboard';
-import { ClipboardList } from 'lucide-react';
+import { ClipboardList, Package } from 'lucide-react';
 
 const CustomerOrders = () => {
-  const { orders } = useApp();
+  const { orders, fetchOrders } = useApp();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await fetchOrders();
+      setLoading(false);
+    };
+    load();
+  }, [fetchOrders]);
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-8 animate-fade-in">
+        <h1 className="text-3xl font-display font-bold text-foreground mb-6">My Orders</h1>
+        <div className="space-y-4">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="bg-card rounded-xl border border-border p-5 animate-pulse">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-5 bg-muted rounded w-24" />
+                <div className="h-4 bg-muted rounded w-20" />
+              </div>
+              <div className="space-y-2 mb-3">
+                <div className="h-4 bg-muted rounded w-full" />
+                <div className="h-4 bg-muted rounded w-2/3" />
+              </div>
+              <div className="h-4 bg-muted rounded w-24 ml-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (orders.length === 0) {
     return (
@@ -28,11 +62,21 @@ const CustomerOrders = () => {
               </div>
               <span className="text-sm text-muted-foreground">{o.date}</span>
             </div>
-            <div className="space-y-1 mb-3">
+            <div className="space-y-2 mb-3">
               {o.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">{item.product.name} × {item.quantity}</span>
-                  <span className="text-foreground">${(item.product.price * item.quantity).toFixed(2)}</span>
+                <div key={idx} className="flex items-center gap-3 text-sm">
+                  <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
+                    {item.product.image ? (
+                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-4 h-4 text-muted-foreground/40" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-foreground font-medium truncate block">{item.product.name}</span>
+                    <span className="text-muted-foreground">× {item.quantity}</span>
+                  </div>
+                  <span className="text-foreground font-medium">${(item.product.price * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>
