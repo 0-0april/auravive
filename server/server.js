@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import bodyParser from 'body-parser'; 
+import bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import pool from './config/db.js';
 
@@ -8,6 +8,7 @@ import pool from './config/db.js';
 import userRoutes from './routes/users.js';
 import productRoutes from './routes/products.js';
 import orderRoutes from './routes/orders.js';
+import cartRoutes from './routes/carts.js';
 
 dotenv.config();
 
@@ -38,42 +39,52 @@ app.get('/api/health', async (req, res) => {
   }
 });
 
-// Ensure required tables exist (optional - run once)
+// Ensure required tables exist and run migrations
 (async () => {
   try {
-    // Check if tables exist
     const [tables] = await pool.query(`
       SELECT TABLE_NAME 
       FROM INFORMATION_SCHEMA.TABLES 
       WHERE TABLE_SCHEMA = ? 
-      AND TABLE_NAME IN ('users', 'products', 'orders')
+      AND TABLE_NAME IN ('users', 'products', 'orders', 'carts')
     `, [process.env.DB_NAME || 'auravivedb']);
-    
-    if (tables.length === 3) {
+
+    if (tables.length >= 3) {
       console.log('✅ All required tables exist');
     } else {
       console.warn('⚠️  Some tables may be missing. Please check your database schema.');
+    }
+
+    // Migration: add quantity column to carts if it doesn't exist
+    try {
+      const [columns] = await pool.query(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'carts' AND COLUMN_NAME = 'quantity'
+      `, [process.env.DB_NAME || 'auravivedb']);
+
+      if (columns.length === 0) {
+        await pool.query('ALTER TABLE carts ADD COLUMN quantity INT DEFAULT 1');
+        console.log('✅ Added quantity column to carts table');
+      }
+    } catch (migrationErr) {
+      console.warn('⚠️  Cart migration note:', migrationErr.message);
     }
   } catch (err) {
     console.error('❌ Database table check failed:', err.message);
   }
 })();
 
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ error: 'Internal server error', details: err.message });
-});
-
-
 // Routes
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/carts', cartRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ 
-    error: 'Not Found', 
+  res.status(404).json({
+    error: 'Not Found',
     message: `Route ${req.method} ${req.path} not found`,
     availableRoutes: [
       'GET /',
@@ -81,7 +92,15 @@ app.use((req, res) => {
       'POST /api/users/login',
       'POST /api/users/register',
       'GET /api/products',
-      'GET /api/orders'
+      'GET /api/products/categories',
+      'GET /api/orders',
+      'GET /api/orders/user/:userID',
+      'POST /api/orders',
+      'GET /api/carts/:userID',
+      'POST /api/carts',
+      'PUT /api/carts/:cartID',
+      'DELETE /api/carts/item/:cartID',
+      'DELETE /api/carts/user/:userID',
     ]
   });
 });
@@ -89,8 +108,8 @@ app.use((req, res) => {
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err);
-  res.status(err.status || 500).json({ 
-    error: 'Internal server error', 
+  res.status(err.status || 500).json({
+    error: 'Internal server error',
     details: process.env.NODE_ENV === 'development' ? err.message : 'An error occurred'
   });
 });

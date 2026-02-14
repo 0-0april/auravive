@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 13, 2026 at 06:22 AM
+-- Generation Time: Feb 14, 2026 at 04:51 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -35,6 +35,19 @@ CREATE DEFINER=`root`@`localhost` FUNCTION `loginUser` (`username` VARCHAR(200),
 END$$
 
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `carts`
+--
+
+CREATE TABLE `carts` (
+  `cartID` int(11) NOT NULL,
+  `productID` int(11) DEFAULT NULL,
+  `userID` int(11) DEFAULT NULL,
+  `quantity` int(11) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -92,13 +105,22 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`userID`, `userFname`, `userLname`, `userEmail`, `userPhone`, `userUserN`, `userPass`, `userRole`, `userAccCreated`) VALUES
-(1, 'Admin', 'User', 'admin@example.com', '09170000001', 'adminuser', 'admin123', 'owner', '2026-02-13 05:10:09'),
-(2, 'John', 'Doe', 'john.doe@example.com', '09171234567', 'johndoe', 'pass123', 'customer', '2026-02-13 05:10:09'),
-(3, 'Jane', 'Smith', 'jane.smith@example.com', '09179876543', 'janesmith', 'pass456', 'customer', '2026-02-13 05:10:09');
+(1, 'Admin', 'User', 'admin@example.com', '09170000001', 'adminuser', '$2b$10$rTCXno.b82zMzTQMsbhaf.cihwOzivNnOhzaIeGD.UU83fLoFKNzW', 'owner', '2026-02-13 05:10:09'),
+(2, 'John', 'Doe', 'john.doe@example.com', '09171234567', 'johndoe', '$2b$10$DtxxVGQd56hobAQ4P12Wo.zdfhx5WTR4c3fWnQhFAD13d.qjhsvqi', 'customer', '2026-02-13 05:10:09'),
+(3, 'Jane', 'Smith', 'jane.smith@example.com', '09179876543', 'janesmith', '$2b$10$8DdXf3EbvQhjA2o/CnElRu7RMLqxoX3zJ1yc4nS9Dg3wOkEfO3t02', 'customer', '2026-02-13 05:10:09'),
+(4, 'ht', 'R5yyh', 'edddj@gmail.com', '8633657', 'ashfth', '$2b$10$h0XeUMFCPiI0QkWf6WV0pu1Qmhy4BSZwv8xdxbXBWMtzKJl8Welne', 'customer', '2026-02-14 11:15:14');
 
 --
 -- Indexes for dumped tables
 --
+
+--
+-- Indexes for table `carts`
+--
+ALTER TABLE `carts`
+  ADD PRIMARY KEY (`cartID`),
+  ADD KEY `productID` (`productID`),
+  ADD KEY `userID` (`userID`);
 
 --
 -- Indexes for table `orders`
@@ -126,6 +148,12 @@ ALTER TABLE `users`
 --
 
 --
+-- AUTO_INCREMENT for table `carts`
+--
+ALTER TABLE `carts`
+  MODIFY `cartID` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `orders`
 --
 ALTER TABLE `orders`
@@ -141,11 +169,18 @@ ALTER TABLE `products`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `userID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `userID` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `carts`
+--
+ALTER TABLE `carts`
+  ADD CONSTRAINT `carts_ibfk_1` FOREIGN KEY (`productID`) REFERENCES `products` (`productID`),
+  ADD CONSTRAINT `carts_ibfk_2` FOREIGN KEY (`userID`) REFERENCES `users` (`userID`);
 
 --
 -- Constraints for table `orders`
