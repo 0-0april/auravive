@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const API_BASE = 'http://localhost:5000/api';
+const SERVER_ORIGIN = 'http://localhost:5000';
 
 export interface Category {
   id: string;
@@ -58,8 +59,8 @@ interface AppContextType {
   logout: () => void;
   products: Product[];
   fetchProducts: () => Promise<void>;
-  addProduct: (p: Omit<Product, 'id'>) => void;
-  updateProduct: (id: string, p: Partial<Product>) => void;
+  addProduct: (p: Omit<Product, 'id'>, file?: File) => Promise<void>;
+  updateProduct: (id: string, p: Partial<Product>, file?: File) => Promise<void>;
   deleteProduct: (id: string) => void;
   categories: Category[];
   addCategory: (name: string) => void;
@@ -75,6 +76,7 @@ interface AppContextType {
   updateOrderStatus: (id: string, status: string) => void;
   search: string;
   setSearch: (value: string) => void;
+  getImageUrl: (path: string) => string;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -257,19 +259,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // --- Products (backend-connected) ---
-  const addProduct = useCallback(async (p: Omit<Product, 'id'>) => {
+  const addProduct = useCallback(async (p: Omit<Product, 'id'>, file?: File) => {
     try {
+      const formData = new FormData();
+      formData.append('productName', p.name);
+      formData.append('productDescrip', p.description);
+      formData.append('productCateg', p.category);
+      formData.append('productPrice', String(p.price));
+      formData.append('productStock', String(p.stock));
+
+      if (file) {
+        formData.append('productImg', file);
+      } else {
+        formData.append('productImg', p.image);
+      }
+
       await fetch(`${API_BASE}/products`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: p.name,
-          productDescrip: p.description,
-          productCateg: p.category,
-          productPrice: p.price,
-          productStock: p.stock,
-          productImg: p.image,
-        }),
+        body: formData,
       });
       await fetchProducts();
     } catch (err) {
@@ -277,23 +284,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [fetchProducts]);
 
-  const updateProduct = useCallback(async (id: string, p: Partial<Product>) => {
+  const updateProduct = useCallback(async (id: string, p: Partial<Product>, file?: File) => {
     try {
-      // Get current product data
       const current = products.find(prod => prod.id === id);
       if (!current) return;
       const merged = { ...current, ...p };
+
+      const formData = new FormData();
+      formData.append('productName', merged.name);
+      formData.append('productDescrip', merged.description);
+      formData.append('productCateg', merged.category);
+      formData.append('productPrice', String(merged.price));
+      formData.append('productStock', String(merged.stock));
+
+      if (file) {
+        formData.append('productImg', file);
+      } else if (p.image) {
+        formData.append('productImg', p.image);
+      }
+
       await fetch(`${API_BASE}/products/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: merged.name,
-          productDescrip: merged.description,
-          productCateg: merged.category,
-          productPrice: merged.price,
-          productStock: merged.stock,
-          productImg: merged.image,
-        }),
+        body: formData,
       });
       await fetchProducts();
     } catch (err) {
@@ -427,6 +439,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       cart, addToCart, removeFromCart, updateCartQty, clearCart,
       orders, fetchOrders, placeOrder, updateOrderStatus,
       search, setSearch,
+      getImageUrl: (path: string) => {
+        if (!path) return '';
+        // If it's an external URL or blob/data, return as is
+        if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
+
+        // If it's a relative path from the server (e.g. /uploads/...), use SERVER_ORIGIN
+        if (path.startsWith('/uploads')) {
+          return `${SERVER_ORIGIN}${path}`;
+        }
+
+        // For everything else, assume it's in the public folder (client-side)
+        // ensure it starts with / for the root-relative path
+        return path.startsWith('/') ? path : `/${path}`;
+      }
     }}>
       {children}
     </AppContext.Provider>

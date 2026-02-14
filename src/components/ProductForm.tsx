@@ -8,7 +8,7 @@ interface ProductFormProps {
 }
 
 const ProductForm = ({ product, onClose }: ProductFormProps) => {
-  const { categories, addProduct, updateProduct } = useApp();
+  const { categories, addProduct, updateProduct, getImageUrl } = useApp();
   const [form, setForm] = useState({
     name: '',
     description: '',
@@ -18,6 +18,8 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
     stock: '',
     active: true,
   });
+
+  const [file, setFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -45,9 +47,9 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
       active: form.active,
     };
     if (product) {
-      updateProduct(product.id, data);
+      updateProduct(product.id, data, file || undefined);
     } else {
-      addProduct(data);
+      addProduct(data, file || undefined);
     }
     onClose();
   };
@@ -114,16 +116,43 @@ const ProductForm = ({ product, onClose }: ProductFormProps) => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Image URL</label>
-            <div className="flex gap-2">
-              <input
-                value={form.image}
-                onChange={e => setForm(f => ({ ...f, image: e.target.value }))}
-                placeholder="https://..."
-                className="flex-1 px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <div className="w-10 h-10 rounded-lg border border-input bg-muted flex items-center justify-center">
-                <Upload className="w-4 h-4 text-muted-foreground" />
+            <label className="block text-sm font-medium text-foreground mb-1">Product Image</label>
+            <div className="flex flex-col gap-3">
+              {form.image && (
+                <div className="relative w-full h-40 rounded-xl overflow-hidden border border-border">
+                  <img src={getImageUrl(form.image)} alt="Preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, image: '' }))}
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        setFile(file);
+                        setForm(f => ({ ...f, image: URL.createObjectURL(file) }));
+                      }
+                    }}
+                    className="hidden"
+                    id="product-image-upload"
+                  />
+                  <label
+                    htmlFor="product-image-upload"
+                    className="flex items-center justify-center gap-2 w-full px-4 py-2.5 rounded-lg border-2 border-dashed border-input bg-background text-muted-foreground hover:text-foreground hover:border-primary transition-all cursor-pointer text-sm font-medium"
+                  >
+                    <Upload className="w-4 h-4" />
+                    {file ? file.name : 'Upload product image'}
+                  </label>
+                </div>
               </div>
             </div>
           </div>

@@ -4,7 +4,7 @@ import { StatusBadge } from './OwnerDashboard';
 import { ClipboardList, Package } from 'lucide-react';
 
 const CustomerOrders = () => {
-  const { orders, fetchOrders } = useApp();
+  const { orders, fetchOrders, getImageUrl } = useApp();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -67,7 +67,11 @@ const CustomerOrders = () => {
                 <div key={idx} className="flex items-center gap-3 text-sm">
                   <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                     {item.product.image ? (
-                      <img src={item.product.image} alt={item.product.name} className="w-full h-full object-cover" />
+                      <img
+                        src={getImageUrl(item.product.image)}
+                        alt={item.product.name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <Package className="w-4 h-4 text-muted-foreground/40" />
                     )}

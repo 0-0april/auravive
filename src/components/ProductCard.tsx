@@ -1,4 +1,4 @@
-import { Product } from '@/contexts/AppContext';
+import { Product, useApp } from '@/contexts/AppContext';
 import { ShoppingCart, Package } from 'lucide-react';
 
 interface ProductCardProps {
@@ -9,13 +9,18 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, onAddToCart, onEdit, isOwner }: ProductCardProps) => {
+  const { getImageUrl } = useApp();
   const outOfStock = product.stock <= 0;
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden hover:shadow-lg transition-all duration-300 animate-fade-in group">
       <div className="aspect-square bg-muted relative overflow-hidden">
         {product.image ? (
-          <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+          <img
+            src={getImageUrl(product.image)}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <Package className="w-12 h-12 text-muted-foreground/40" />

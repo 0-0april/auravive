@@ -35,7 +35,7 @@ const LandingPage = () => {
       {/* Hero */}
       <section className="relative pt-32 bg-black pb-20 px-6">
         {/* GIF Background */}
-        <div 
+        <div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat bg-black -z-0 opacity-1000"
           style={{
             backgroundImage: `url('/theme2.png')`,
@@ -46,13 +46,13 @@ const LandingPage = () => {
         <div className="fixed inset-0 bg-background/20 -z-10" />
         <div className="max-w-7xl z-0 relative">
           <div className="max-w-3xl  ml-0 mr-automx-auto text-center animate-fade-in">
-            <div className="inline-flex  items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-muted/50 text-sm text-muted-foreground">
-              <Zap className="w-3.5 h-3.5 text-secondary text-violet-500" />
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-border bg-muted/50 text-sm text-muted-foreground group">
+              <Zap className="w-3.5 h-3.5 text-primary animate-pulse" />
               Single-owner e-commerce platform
             </div>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl font-display font-bold text-foreground leading-[1.1] tracking-tight">
               Run Your Shop{' '}
-              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-violet-500 text-transparent">
+              <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Effortlessly
               </span>
             </h1>
@@ -78,8 +78,8 @@ const LandingPage = () => {
               { icon: TrendingUp, value: '99%', label: 'Uptime' },
               { icon: Star, value: '4.9', label: 'Average Rating' },
             ].map((stat) => (
-              <div key={stat.label} className="text-center p-5 rounded-xl glass-card">
-                <stat.icon className="w-5 h-5 text-secondary mx-auto mb-2 text-violet-500" />
+              <div key={stat.label} className="text-center p-5 rounded-xl glass-card group hover:border-primary/30 transition-colors">
+                <stat.icon className="w-5 h-5 text-primary mx-auto mb-2 group-hover:scale-110 transition-transform" />
                 <div className="text-2xl font-bold text-foreground">{stat.value}</div>
                 <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
               </div>
@@ -89,10 +89,10 @@ const LandingPage = () => {
       </section>
 
       {/* Features */}
-      <section className="py-20 px-6 bg-muted/30 z-10 bg-violet-50" >
+      <section className="py-20 px-6 bg-muted/30 z-10" >
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-display font-bold text-foreground text-violet-700">
+            <h2 className="text-3xl sm:text-4xl font-display font-bold text-foreground">
               Everything You Need
             </h2>
             <p className="mt-3 text-muted-foreground text-lg max-w-xl mx-auto">
@@ -138,7 +138,7 @@ const LandingPage = () => {
                 className="group p-6 rounded-xl bg-card border border-border hover:shadow-[0_0px_20px_rgba(139,92,246,0.5)] hover:border-primary/20 transition-all duration-300"
               >
                 <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
-                  <f.icon className="w-5 h-5 text-primary text-violet-500" />
+                  <f.icon className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{f.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{f.desc}</p>
