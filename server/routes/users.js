@@ -90,6 +90,54 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Facebook Auth
+router.post('/facebook-auth', async (req, res) => {
+  try {
+    const { facebookID, userFname, userLname, userEmail } = req.body;
+
+    if (!facebookID) {
+      return res.status(400).json({ success: false, error: 'Facebook ID is required' });
+    }
+
+    // 1. Try to find user by Facebook ID
+    let [users] = await pool.query('SELECT * FROM users WHERE userFacebookID = ?', [facebookID]);
+
+    if (users.length === 0 && userEmail) {
+      // 2. If not found by FB ID, try to find by Email
+      const [emailUsers] = await pool.query('SELECT * FROM users WHERE userEmail = ?', [userEmail]);
+      if (emailUsers.length > 0) {
+        // Link existing email account to Facebook
+        await pool.query('UPDATE users SET userFacebookID = ? WHERE userID = ?', [facebookID, emailUsers[0].userID]);
+        users = [{ ...emailUsers[0], userFacebookID: facebookID }];
+      }
+    }
+
+    if (users.length === 0) {
+      // 3. Register new user
+      const username = `fb_${facebookID.substring(0, 8)}_${Math.random().toString(36).substring(2, 5)}`;
+      const [result] = await pool.query(
+        'INSERT INTO users (userFacebookID, userFname, userLname, userEmail, userUserN, userRole) VALUES (?, ?, ?, ?, ?, ?)',
+        [facebookID, userFname, userLname, userEmail || '', username, 'customer']
+      );
+
+      const [newUser] = await pool.query('SELECT * FROM users WHERE userID = ?', [result.insertId]);
+      users = newUser;
+    }
+
+    const user = users[0];
+    delete user.userPass;
+
+    res.json({
+      success: true,
+      user: user
+    });
+
+  } catch (error) {
+    console.error('Facebook auth error:', error);
+    res.status(500).json({ success: false, error: 'Facebook authentication failed', details: error.message });
+  }
+});
+
 // Register
 router.post('/register', async (req, res) => {
   try {

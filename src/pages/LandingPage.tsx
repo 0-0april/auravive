@@ -156,7 +156,7 @@ const LandingPage = () => {
             Ready to Launch Your Shop?
           </h2>
           <p className="mt-4 text-primary-foreground/80 text-lg max-w-lg mx-auto relative">
-            Join ShopHub today and start managing your products, inventory, and orders in minutes.
+            Join Auravive today and start managing your products, inventory, and orders in minutes.
           </p>
           <button
             onClick={() => navigate('/login')}
@@ -176,7 +176,7 @@ const LandingPage = () => {
             </div>
             <span className="font-display font-bold text-foreground">Auravive</span>
           </div>
-          <p className="text-sm text-muted-foreground">© 2026 ShopHub. All rights reserved.</p>
+          <p className="text-sm text-muted-foreground">© 2026 Auravive. All rights reserved.</p>
         </div>
       </footer>
     </div>

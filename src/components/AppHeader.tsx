@@ -23,7 +23,13 @@ const AppHeader = () => {
 
   if (!user) return null;
 
+  const isLandingPage = location.pathname === '/';
+  const isLoginPage = location.pathname === '/login';
+
+  if (isLandingPage || isLoginPage) return null;
+
   const isOwner = user.role === 'owner';
+  const isOwnerPage = location.pathname.startsWith('/owner');
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
 
   // New orders are those with 'pending' status
@@ -75,23 +81,27 @@ const AppHeader = () => {
         <div className="flex items-center gap-3">
 
           {/* Desktop search bar */}
-          <div className="relative hidden md:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search products..."
-              className="w-64 pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
+          {!isOwnerPage && (
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search products..."
+                className="w-64 pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          )}
 
           {/* Mobile search toggle button */}
-          <button
-            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-          >
-            {mobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
-          </button>
+          {!isOwnerPage && (
+            <button
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              className="md:hidden p-2 rounded-lg hover:bg-muted transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
+            >
+              {mobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
+            </button>
+          )}
 
           {/* Notifications for Owner */}
           {isOwner && (
@@ -183,7 +193,7 @@ const AppHeader = () => {
       </div>
 
       {/* Mobile search bar (expandable) */}
-      {mobileSearchOpen && (
+      {!isOwnerPage && mobileSearchOpen && (
         <div className="md:hidden px-4 pb-3 animate-fade-in">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />

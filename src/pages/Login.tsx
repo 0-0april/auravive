@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingBag, ArrowLeft, Lock, User, Eye, EyeOff, Mail, Phone } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, Lock, User, Eye, EyeOff, Mail, Phone, ShieldCheck } from 'lucide-react';
 
 type AuthMode = 'login' | 'register';
 
@@ -10,6 +10,32 @@ const Login = () => {
     const navigate = useNavigate();
     const [mode, setMode] = useState<AuthMode>('login');
     const [showPassword, setShowPassword] = useState(false);
+    const [showFPSim, setShowFPSim] = useState(false); // Simulated Facebook Prompt
+
+    // Initialize Facebook SDK
+    useEffect(() => {
+        // @ts-ignore
+        window.fbAsyncInit = function () {
+            // @ts-ignore
+            FB.init({
+                appId: 'YOUR_FACEBOOK_APP_ID', // Replace with real App ID
+                cookie: true,
+                xfbml: true,
+                version: 'v18.0'
+            });
+        };
+
+        // Load SDK script
+        (function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0];
+            if (d.getElementById(id)) return;
+            js = d.createElement(s); js.id = id;
+            // @ts-ignore
+            js.src = "https://connect.facebook.net/en_US/sdk.js";
+            // @ts-ignore
+            fjs.parentNode.insertBefore(js, fjs);
+        }(document, 'script', 'facebook-jssdk'));
+    }, []);
     const [formData, setFormData] = useState({
         userFname: '',
         userLname: '',
@@ -29,17 +55,71 @@ const Login = () => {
         setError('');
     };
 
-    const handleFacebookLogin = () => {
-        const fbUser = {
-            userID: 0,
-            name: 'Shop Owner',
-            role: 'owner' as const,
-            avatar: 'https://api.dicebear.com/7.x/initials/svg?seed=SO',
-            userFname: 'Shop',
-            userLname: 'Owner',
-        };
-        loginWithData(fbUser);
-        navigate('/owner');
+    const handleFacebookLogin = async () => {
+        // @ts-ignore
+        if (typeof FB === 'undefined') {
+            setShowFPSim(true);
+            return;
+        }
+
+        setLoading(true);
+        setError('');
+
+        // @ts-ignore
+        FB.login((response) => {
+            if (response.authResponse) {
+                // @ts-ignore
+                FB.api('/me', { fields: 'id,first_name,last_name,email' }, async (profile) => {
+                    await authWithBackend({
+                        facebookID: profile.id,
+                        userFname: profile.first_name,
+                        userLname: profile.last_name,
+                        userEmail: profile.email
+                    });
+                });
+            } else {
+                setLoading(false);
+                setError('User cancelled login or did not fully authorize.');
+            }
+        }, {
+            scope: 'public_profile,email',
+            auth_type: 'reauthenticate' // This makes FB ask "Is this you?" or re-verify
+        });
+    };
+
+    const authWithBackend = async (profileData: any) => {
+        try {
+            const response = await fetch('http://localhost:5000/api/users/facebook-auth', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(profileData)
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                const user = data.user;
+                const userData = {
+                    userID: user.userID,
+                    name: `${user.userFname} ${user.userLname}`,
+                    role: user.userRole || 'customer',
+                    avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${user.userFname}${user.userLname}`,
+                    userFname: user.userFname,
+                    userLname: user.userLname,
+                    userEmail: user.userEmail,
+                };
+
+                loginWithData(userData as any);
+                navigate(userData.role === 'owner' ? '/owner' : '/shop');
+            } else {
+                setError(data.error || 'Facebook authentication failed');
+            }
+        } catch (err) {
+            console.error('FB Login Error:', err);
+            setError('Connection error. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleFormSubmit = async (e: React.FormEvent) => {
@@ -113,20 +193,27 @@ const Login = () => {
     return (
         <div className="min-h-screen flex bg-background">
             {/* Left decorative panel */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden gradient-primary">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_40%,rgba(255,255,255,0.08),transparent_60%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.05),transparent_50%)]" />
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-zinc-800">
+                {/* Background Image with Blur */}
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105 filter blur-[1.5px] opacity-75"
+                    style={{ backgroundImage: "url('/theme2.jpg')" }}
+                />
+
+                {/* Balanced Overlays for mid-level brightness */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/40" />
+                <div className="absolute inset-0 bg-primary/5 mix-blend-overlay" />
                 <div className="relative z-10 flex flex-col justify-between p-12 w-full">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
                         <div className="w-10 h-10 rounded-lg bg-primary-foreground/10 backdrop-blur-sm flex items-center justify-center border border-primary-foreground/20">
                             <ShoppingBag className="w-5 h-5 text-primary-foreground" />
                         </div>
-                        <span className="font-display font-bold text-xl text-primary-foreground">ShopHub</span>
+                        <span className="font-display font-bold text-xl text-primary-foreground">Auravive</span>
                     </div>
 
                     <div className="space-y-6 max-w-md">
                         <h2 className="text-4xl font-display font-bold text-primary-foreground leading-tight">
-                            Start selling today with ShopHub
+                            Start selling today with Auravive
                         </h2>
                         <p className="text-primary-foreground/70 text-lg leading-relaxed">
                             Join thousands of shop owners managing their products, inventory, and orders in one beautiful platform.
@@ -146,7 +233,7 @@ const Login = () => {
                         </div>
                     </div>
 
-                    <p className="text-primary-foreground/40 text-sm">© 2026 ShopHub. All rights reserved.</p>
+                    <p className="text-primary-foreground/40 text-sm">© 2026 Auravive. All rights reserved.</p>
                 </div>
             </div>
 
@@ -165,7 +252,7 @@ const Login = () => {
                             <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center">
                                 <ShoppingBag className="w-4 h-4 text-primary-foreground" />
                             </div>
-                            <span className="font-display font-bold text-foreground">ShopHub</span>
+                            <span className="font-display font-bold text-foreground">Auravive</span>
                         </div>
                     </div>
 
@@ -177,7 +264,7 @@ const Login = () => {
                             {mode === 'login' ? 'Welcome back' : 'Create account'}
                         </h1>
                         <p className="text-muted-foreground mt-2">
-                            {mode === 'login' ? 'Sign in to your account' : 'Get started with ShopHub'}
+                            {mode === 'login' ? 'Sign in to your account' : 'Get started with Auravive'}
                         </p>
                     </div>
 
@@ -346,6 +433,68 @@ const Login = () => {
                     </p>
                 </div>
             </div>
+
+            {/* Simulated Facebook Confirmation Prompt */}
+            {showFPSim && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-scale-in">
+                        <div className="bg-[#1877F2] p-4 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                                </svg>
+                                <span className="text-white font-bold text-sm">Facebook Login</span>
+                            </div>
+                            <button onClick={() => setShowFPSim(false)} className="text-white/80 hover:text-white transition-colors">
+                                <Lock className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-8 text-center bg-gray-50">
+                            <div className="relative inline-block mb-6">
+                                <img
+                                    src="https://api.dicebear.com/7.x/initials/svg?seed=AuthUser"
+                                    alt="User"
+                                    className="w-20 h-20 rounded-full border-4 border-white shadow-md mx-auto bg-white"
+                                />
+                                <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-500 rounded-full border-2 border-white flex items-center justify-center">
+                                    <ShieldCheck className="w-4 h-4 text-white" />
+                                </div>
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Continue as Auth User?</h3>
+                            <p className="text-sm text-gray-500 mb-8 leading-relaxed px-4">
+                                Auravive will receive your name, profile picture, and email address.
+                            </p>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => {
+                                        setShowFPSim(false);
+                                        authWithBackend({
+                                            facebookID: 'fb_1001',
+                                            userFname: 'Auth',
+                                            userLname: 'User',
+                                            userEmail: 'auth.user@facebook.com'
+                                        });
+                                    }}
+                                    className="w-full py-2.5 rounded-lg bg-[#1877F2] text-white font-bold text-sm hover:bg-[#166FE5] transition-colors shadow-md shadow-[#1877F2]/30 cursor-pointer"
+                                >
+                                    Continue as Auth
+                                </button>
+                                <button
+                                    onClick={() => setShowFPSim(false)}
+                                    className="w-full py-2.5 rounded-lg border border-gray-300 bg-white text-gray-700 font-bold text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                            <div className="mt-6 pt-6 border-t border-gray-200">
+                                <p className="text-[10px] text-gray-400 font-medium">
+                                    By continuing, you agree to Facebook's Terms of Service and Privacy Policy.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
